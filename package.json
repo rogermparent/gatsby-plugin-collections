@@ -1,0 +1,31 @@
+{
+  "name": "@arrempee/gatsby-theme-mdx-collections",
+  "version": "1.0.1",
+  "description": "A Gatsby theme that groups nodes together into collections, similar to Hugo.",
+  "main": "gatsby-config.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "gatsby",
+    "gatsby-theme",
+    "blog"
+  ],
+  "author": "rmp",
+  "license": "MIT",
+  "devDependencies": {
+    "gatsby": "^2.10.0",
+    "react": "^16.8.6",
+    "react-dom": "^16.8.6"
+  },
+  "dependencies": {
+    "@arrempee/gatsby-helpers": "^1.0.0",
+    "@arrempee/gatsby-theme-mdx-pages": "^1.0.0",
+    "@mdx-js/mdx": "^1.1.1",
+    "@mdx-js/react": "^1.1.1",
+    "gatsby-plugin-mdx": "^1.0.14",
+    "install": "^0.12.2",
+    "prop-types": "^15.7.2",
+    "react": "^16.8.6"
+  }
+}
