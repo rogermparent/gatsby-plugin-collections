@@ -3,14 +3,6 @@ const path = require('path');
 const fs = require('fs');
 const { getFirstResolvableComponent } = require('@arrempee/gatsby-helpers');
 
-const defaultGetCollection = ({ node, getNode }) => {
-    const mdxNode = getNode(node.parent);
-    const fileNode = getNode(mdxNode.parent);
-
-    const firstSubdir = fileNode.relativeDirectory.split('/')[0];
-    return firstSubdir === '' ? null : firstSubdir;
-};
-
 exports.sourceNodes = ({ actions, schema, createNodeId }, {
     collections = {},
     contentDir = "content"
@@ -92,9 +84,12 @@ exports.onCreateNode = ({
         createParentChildLink
     }
 }, {
-    getCollection = defaultGetCollection
+    collectionResolvers = {}
 }) => {
-    if(node.internal.type === `MdxPage`) {
+
+    const getCollection = collectionResolvers[node.internal.type];
+
+    if(getCollection) {
         const fieldData = {
             collection: getCollection({node, getNode}),
             page___NODE: node.id

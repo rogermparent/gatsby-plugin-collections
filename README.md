@@ -1,18 +1,19 @@
-# Gatsby Theme: MDX Collections
+# Gatsby Plugin: Collections
 
-This Gatsby theme sits on top of `gatsby-theme-mdx-pages`, expanding on it and
-its Hugo inspiration by implementing "collections"- distinct groups of content
-that share commonalities with each other which aren't necessarily shared between
-other groups.
+This Gatsby plugin groups nodes into "collections"- distinct groups that share
+commonalities which aren't necessarily shared with items outside the group. This
+concept takes heavy inspiration from the static site generator Hugo.
 
 For instance, in a blog, there is a separation between the date-based content
-"posts" and regular pages like "about" or "contact". This theme aims to make
-implementing that separation a first-class concern.
+"posts" and regular pages like "about" or "contact", despite all of them being
+the same type of node. This plugin aims to make implementing that separation a
+first-class concern.
+
+This plugin was formerly known as `@arrempee/gatsby-theme-mdx-collections`, but
+it only took minimal changes to allow for the existing logic to apply to any
+node type while still being usable by `@arrempee/gatsby-theme-mdx-blog`.
 
 ## Configuration
-
-On top of the options specific to this theme, all provided options are also
-passed through to the underlying `gatsby-theme-mdx-pages` instance.
 
 ### collections: object
 
@@ -20,38 +21,15 @@ While collections will be automatically parsed from top-level subdirectories of
 the directory specified by contentDir, they may also be manually defined to add
 extra context and configuration to the resulting `Collection` nodes.
 
-### getCollection: function({ node, getNode })
+### collectionResolvers: object
 
-This function is used by the theme to get the key of the collection each
-particular `MdxPage` node is under. It recieves the `MdxPage` node in question,
-and also has access to Gatsby's `getNode` to reach into other nodes, like the
-`Mdx` or `File` nodes above it.
+This object contains functions that are used to determine which collection any
+node should be put in. Each node's `internal.type` property is checked against
+this object, and the function under that key will be used to grab the collection key.
 
-### createPages: boolean
-
-If set to false, the `createPages` callback will be aborted. Useful for
-implementing your own `createPages` while still using nodes made by this theme.
-
-### templateDirectory: string
-
-The directory where template components are located, relative to the site's
-root. defaults to "src/templates".
-
-This is also passed to `gatsby-theme-mdx-pages`
-
-### defaultTemplate: string
-
-The path of the template that pages will fall back on if their specified
-template cannot be found.
-
-Defaults to "default", making the default default template
-"src/templates/default.js".
-
-### getTemplateComponent: function({ node, defaultTemplate, templateDirectory, collection })
-
-If provided, this function will override the default one that searches for a
-component given an `MdxPage` node, its collection, and the defaultTemplate and
-templateDirectory settings
+The functions that are this object's values recieve the node of the key's type,
+and also has access to Gatsby's `getNode` to reach into other nodes, like a
+parent `File` node.
 
 ## Node Types
 
@@ -69,11 +47,12 @@ resulting node, except `key`, which will be overwritten.
 
 ### CollectionEntry
 
-This node type serves as a link between an `MdxPage` and the `Collection` it's
+This node type serves as a link between a node and the `Collection` it's
 contained in. If you want to get all nodes in a certain collection, query these.
 
 #### Fields
 
 - **collection**: A direct link to the `Collection` node.
 
-- **page**: A direct link to the `MdxPage` node.
+- **entry**: A direct link to the node this entry represents. It could be any
+  type, or even one of multiple depending on your configuration.
