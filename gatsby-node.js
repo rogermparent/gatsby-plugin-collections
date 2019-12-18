@@ -1,118 +1,127 @@
-const crypto = require('crypto');
-const path = require('path');
-const fs = require('fs');
-const { getFirstResolvableComponent } = require('@arrempee/gatsby-helpers');
+const crypto = require("crypto");
+const path = require("path");
+const fs = require("fs");
 
-exports.sourceNodes = ({ actions, schema, createNodeId }, {
-    collections = {},
-    contentDir = "content"
-}) => {
-    // Pre-define the required Mdx frontmatter and fields properties.
-    // This prevents the site from breaking if no pages have them defined.
-    const {createTypes, createNode} = actions;
-    const types = [
-        schema.buildObjectType({
-            name: `CollectionEntry`,
-            interfaces: [`Node`],
-            fields: {
-                collection: {
-                    type: `Collection!`,
-                    extensions: {
-                        link: {
-                            by: 'key'
-                        }
-                    },
-                }
-            }
-        }),
-        schema.buildObjectType({
-            name: `Collection`,
-            interfaces: [`Node`],
-            fields: {
-                key: `String!`,
-            }
-        }),
-    ];
-    createTypes(types);
+const { withDefaults } = require("./utils/default-options");
+const {
+  buildCollectionId,
+  createCollectionNode,
+  getOrCreateCollectionNode,
+  createCollectionEntryNode
+} = require("./utils/node-builders.js");
 
-    /* Grab all directories in the contentDir, then add any which aren't
-     * manually specified to the list as option-less collections.
-     */
-    for(const dirent of fs.readdirSync(
-        path.join(process.cwd(), contentDir),
-        { withFileTypes: true }
-    )) {
-        if(dirent.isDirectory()){
-            collections[dirent.name] = collections[dirent.name] || null
+exports.createSchemaCustomization = ({ actions, schema }, pluginOptions) => {
+  const { createTypes, createFieldExtension } = actions;
+
+  createTypes([
+    schema.buildObjectType({
+      name: `Collection`,
+      fields: {
+        id: { type: `ID!` },
+        key: { type: `String!` },
+        indexSlug: { type: `String!` },
+        label: { type: `String` }
+      },
+      interfaces: [`Node`]
+    }),
+    schema.buildObjectType({
+      name: `CollectionEntry`,
+      fields: {
+        id: { type: `ID!` },
+        collection: {
+          type: `Collection`,
+          extensions: {
+            link: {}
+          }
         }
-    }
-
-    for(collectionKey in collections) {
-        const collectionConfig = collections[collectionKey];
-
-        const fieldData = {
-            ...collectionConfig,
-            key: collectionKey,
-        };
-
-        const collectionNode = {
-            ...fieldData,
-            // Required fields
-            id: createNodeId(`CollectionNode >>> ${collectionKey}`),
-            children: [],
-            internal: {
-                type: `Collection`,
-                contentDigest: crypto
-                    .createHash(`md5`)
-                    .update(JSON.stringify(fieldData))
-                    .digest(`hex`),
-                content: JSON.stringify(fieldData),
-                description: `custom configuration pertaining to a collection`
-            }
-        };
-
-        createNode(collectionNode);
-    }
+      },
+      interfaces: [`Node`]
+    })
+  ]);
 };
 
-exports.onCreateNode = ({
-    node,
+exports.sourceNodes = async (
+  { actions, createNodeId, createContentDigest, getNodesByType },
+  pluginOptions
+) => {
+  const { collections } = withDefaults(pluginOptions);
+  const { createNode, touchNode } = actions;
+
+  const collectionNodes = getNodesByType(`Collection`);
+  if (collectionNodes) {
+    for (const collection of collectionNodes) {
+      touchNode({ nodeId: collection.id });
+    }
+  }
+
+  for (const collectionKey in collections) {
+    const collectionOptions = collections[collectionKey];
+    const collectionId = createNodeId(buildCollectionId(collectionKey));
+    await createCollectionNode({
+      createNode,
+      createContentDigest,
+      id: collectionId,
+      collectionKey,
+      collectionOptions
+    });
+  }
+};
+
+exports.onCreateNode = async (
+  { node, actions, getNode, createNodeId, createContentDigest },
+  pluginOptions
+) => {
+  const options = withDefaults(pluginOptions);
+  const { createNode, createParentChildLink } = actions;
+  const { collections, resolvers } = options;
+
+  const resolver = resolvers[node.internal.type];
+  if (!resolver) return;
+
+  const collection = resolver({ node, getNode, options });
+  if (!collection) return;
+
+  const collectionNode = await getOrCreateCollectionNode({
     getNode,
-    createNodeId,
-    actions: {
-        createNode,
-        createParentChildLink
+    createNode,
+    createContentDigest,
+    id: createNodeId(buildCollectionId(collection)),
+    collectionKey: collection,
+    collectionOptions: options.collections[collection]
+  });
+
+  await createCollectionEntryNode({
+    createNode,
+    createContentDigest,
+    createParentChildLink,
+    id: createNodeId(`CollectionEntry >>> ${collection} >>> ${node.id}`),
+    collectionNode,
+    entryNode: node
+  });
+};
+
+exports.createPages = async ({ actions, graphql, store }, pluginOptions) => {
+  if (pluginOptions.createPages === false) return;
+
+  const { indexTemplate } = withDefaults(pluginOptions);
+  const programDirectory = store.getState().program.directory;
+
+  const query = await graphql(`
+    query CollectionIndexesQuery {
+      allCollection {
+        nodes {
+          indexSlug
+          id
+        }
+      }
     }
-}, {
-    collectionResolvers = {}
-}) => {
+  `);
 
-    const getCollection = collectionResolvers[node.internal.type];
-
-    if(getCollection) {
-        const fieldData = {
-            collection: getCollection({node, getNode}),
-            page___NODE: node.id
-        };
-
-        const collectionEntryNode = {
-            ...fieldData,
-            // Required fields
-            id: createNodeId(`${node.id} >>> CollectionEntry`),
-            parent: node.id,
-            children: [],
-            internal: {
-                type: `CollectionEntry`,
-                contentDigest: crypto
-                    .createHash(`md5`)
-                    .update(JSON.stringify(fieldData))
-                    .digest(`hex`),
-                content: JSON.stringify(fieldData),
-                description: `A stub grouping an MDX page in a collection.`
-            }
-        };
-
-        createNode(collectionEntryNode);
-        createParentChildLink({parent: node, child: collectionEntryNode});
-    }
+  for (const collection of query.data.allCollection.nodes) {
+    actions.createPage({
+      component: require.resolve(path.join(programDirectory, indexTemplate)),
+      path: collection.indexSlug,
+      context: { id: collection.id }
+    });
+  }
 };

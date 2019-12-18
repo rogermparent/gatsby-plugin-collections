@@ -1,25 +1,16 @@
 # Gatsby Plugin: Collections
 
-This Gatsby plugin groups nodes into "collections"- distinct groups that share
-commonalities which aren't necessarily shared with items outside the group. This
-concept takes heavy inspiration from the static site generator Hugo.
-
-For instance, in a blog, there is a separation between the date-based content
-"posts" and regular pages like "about" or "contact", despite all of them being
-the same type of node. This plugin aims to make implementing that separation a
-first-class concern.
-
-This plugin was formerly known as `@arrempee/gatsby-theme-mdx-collections`, but
-it only took minimal changes to allow for the existing logic to apply to any
-node type while still being usable by `@arrempee/gatsby-theme-mdx-blog`.
+This Gatsby plugin groups nodes into "collections"- distinct groups are often
+queried with each other for one reason or another. This concept takes heavy
+inspiration from the static site generator Hugo.
 
 ## Configuration
 
 ### collections: object
 
-While collections will be automatically parsed from top-level subdirectories of
-the directory specified by contentDir, they may also be manually defined to add
-extra context and configuration to the resulting `Collection` nodes.
+This object manually describes Collections- it can be used to give extra context to certain collections for use in index pages as well as actual collection-specific configuration for the plugin.
+
+The format is <Collection Key>:<Options>, where the Collection Key is a string that matches what a Resolver would output and Options is an arbitrary object that holds configuration specific to that Collection.
 
 ### collectionResolvers: object
 
@@ -27,23 +18,29 @@ This object contains functions that are used to determine which collection any
 node should be put in. Each node's `internal.type` property is checked against
 this object, and the function under that key will be used to grab the collection key.
 
-The functions that are this object's values recieve the node of the key's type,
-and also has access to Gatsby's `getNode` to reach into other nodes, like a
-parent `File` node.
+The functions that are this object's values receive an object with the following arguments:
+
+**node**: A Node whose type matches this function's key  
+**getNode**: The `getNode` function from Gatsby, for reaching into other nodes like `File`-type parents.  
+**options**: The whole configuration object provided to the plugin, with default fields filled in.
 
 ## Node Types
 
 ### Collection
 
 This node represents a Collection, and holds any Collection-level settings.  
-One will be made for each top-level subdirectory in the contentDir.
+One is made for each collection, whether it be manually specified or automatically generated.
 
-Only one field will always be present: the **key** string that represents the 
-name of the collection's directory and/or the key its configuration is under in 
-the `collection` config object.
+#### Fields
 
-Any fields specified in a manual configuration will be added directly to the
-resulting node, except `key`, which will be overwritten.
+- **key**: This string is what the resolver of each entry returned, and generally the best way to access Collection nodes other than the actual node ID.
+
+- **indexSlug**: This string is what this Collection's index pages will be rendered under. If this isn't provided in the Collection's options, it will default to be the same as the key.
+
+- **label**: A "human-friendly" string to identify this collection, mostly used for rendering purposes. Pulls from the Collection options and defaults to null, but won't break queries asking for it if no Collection has one.
+
+- **options**: A fully Gatsby-inferred object that contains all of this Collection's options. Provided as a sort of "escape hatch" for quick-and-dirty feature addition- if you find yourself using it, consider manually specifying the field with `createSchemaCustomization` or `createNodeField`.
+
 
 ### CollectionEntry
 
@@ -52,7 +49,21 @@ contained in. If you want to get all nodes in a certain collection, query these.
 
 #### Fields
 
-- **collection**: A direct link to the `Collection` node.
+- **collection**: A direct link to the Collection node by ID.
 
-- **entry**: A direct link to the node this entry represents. It could be any
-  type, or even one of multiple depending on your configuration.
+- **parent**: The node being categorized into a Collection. Access its fields using conditional fragments, like this:
+
+```graphql
+allCollectionEntry{
+  nodes{
+    collection{
+      key
+    }
+    parent {
+      ... on EntryNodeType{
+        entryNodeField
+      }
+    }
+  }
+}
+```
