@@ -12,7 +12,7 @@ This object manually describes Collections- it can be used to give extra context
 
 The format is <Collection Key>:<Options>, where the Collection Key is a string that matches what a Resolver would output and Options is an arbitrary object that holds configuration specific to that Collection.
 
-### collectionResolvers: object
+### resolvers: object
 
 This object contains functions that are used to determine which collection any
 node should be put in. Each node's `internal.type` property is checked against
@@ -40,7 +40,6 @@ One is made for each collection, whether it be manually specified or automatical
 - **label**: A "human-friendly" string to identify this collection, mostly used for rendering purposes. Pulls from the Collection options and defaults to null, but won't break queries asking for it if no Collection has one.
 
 - **options**: A fully Gatsby-inferred object that contains all of this Collection's options. Provided as a sort of "escape hatch" for quick-and-dirty feature addition- if you find yourself using it, consider manually specifying the field with `createSchemaCustomization` or `createNodeField`.
-
 
 ### CollectionEntry
 
