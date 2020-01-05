@@ -8,10 +8,9 @@ const createCollectionNode = async ({
   collectionOptions = {}
 }) => {
   const collectionFields = {
+    ...collectionOptions,
     key: collectionKey,
-    label: collectionOptions.label,
-    indexSlug: collectionOptions.indexSlug || collectionKey,
-    options: collectionOptions
+    indexSlug: collectionOptions.indexSlug || collectionKey
   };
 
   const collectionNode = {
