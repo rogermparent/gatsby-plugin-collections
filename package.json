@@ -1,6 +1,6 @@
 {
   "name": "@arrempee/gatsby-plugin-collections",
-  "version": "2.0.1",
+  "version": "3.0.0",
   "description": "A Gatsby plugin that groups nodes together into collections, similar to Hugo.",
   "main": "gatsby-node.js",
   "repository": "github:rogermparent/gatsby-plugin-collections",
