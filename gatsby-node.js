@@ -78,7 +78,11 @@ exports.onCreateNode = async (
   const resolver = resolvers[node.internal.type];
   if (!resolver) return;
 
-  const collection = resolver({ node, getNode, options });
+  const collection =
+    typeof resolver === "function"
+      ? resolver({ node, getNode, options })
+      : resolver;
+
   if (!collection) return;
 
   const collectionNode = await getOrCreateCollectionNode({
